@@ -1,0 +1,172 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Inkwell — a writerly dark theme.
+   Warm parchment accents on a deep ink ground.
+   All colors HSL.
+*/
+
+@layer base {
+  :root {
+    /* Light fallback (app defaults to dark) */
+    --background: 40 30% 97%;
+    --foreground: 25 20% 15%;
+    --card: 40 30% 99%;
+    --card-foreground: 25 20% 15%;
+    --popover: 40 30% 99%;
+    --popover-foreground: 25 20% 15%;
+    --primary: 25 50% 35%;
+    --primary-foreground: 40 30% 97%;
+    --secondary: 35 20% 90%;
+    --secondary-foreground: 25 20% 15%;
+    --muted: 35 15% 92%;
+    --muted-foreground: 25 10% 45%;
+    --accent: 30 40% 88%;
+    --accent-foreground: 25 30% 20%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 40 30% 97%;
+    --border: 30 15% 85%;
+    --input: 30 15% 85%;
+    --ring: 25 50% 35%;
+    --radius: 0.85rem;
+
+    --gold: 38 65% 60%;
+
+    --sidebar-background: 35 18% 95%;
+    --sidebar-foreground: 25 20% 20%;
+    --sidebar-primary: 25 50% 35%;
+    --sidebar-primary-foreground: 40 30% 97%;
+    --sidebar-accent: 35 20% 90%;
+    --sidebar-accent-foreground: 25 20% 15%;
+    --sidebar-border: 30 15% 85%;
+    --sidebar-ring: 25 50% 35%;
+  }
+
+  .dark {
+    --background: 25 14% 9%;
+    --foreground: 38 25% 88%;
+
+    --card: 25 14% 11%;
+    --card-foreground: 38 25% 88%;
+
+    --popover: 25 16% 10%;
+    --popover-foreground: 38 25% 88%;
+
+    --primary: 38 55% 70%;
+    --primary-foreground: 25 20% 12%;
+
+    --secondary: 25 10% 16%;
+    --secondary-foreground: 38 25% 88%;
+
+    --muted: 25 10% 14%;
+    --muted-foreground: 35 12% 60%;
+
+    --accent: 30 25% 20%;
+    --accent-foreground: 38 40% 85%;
+
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 38 25% 88%;
+
+    --border: 25 10% 18%;
+    --input: 25 10% 18%;
+    --ring: 38 55% 70%;
+
+    --gold: 38 70% 65%;
+
+    --sidebar-background: 25 16% 8%;
+    --sidebar-foreground: 38 20% 78%;
+    --sidebar-primary: 38 55% 70%;
+    --sidebar-primary-foreground: 25 20% 12%;
+    --sidebar-accent: 25 12% 14%;
+    --sidebar-accent-foreground: 38 25% 88%;
+    --sidebar-border: 25 10% 16%;
+    --sidebar-ring: 38 55% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  .font-serif-display {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+  }
+
+  .ink-card {
+    @apply bg-card border border-border/60 rounded-2xl transition-all duration-300;
+    box-shadow:
+      0 1px 0 hsl(var(--foreground) / 0.02) inset,
+      0 8px 24px -12px hsl(0 0% 0% / 0.4);
+  }
+
+  .ink-card:hover {
+    @apply border-border;
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 0 hsl(var(--primary) / 0.08) inset,
+      0 18px 40px -16px hsl(0 0% 0% / 0.55);
+  }
+
+  .prose-ink {
+    @apply text-foreground/90 leading-relaxed;
+  }
+  .prose-ink p { @apply my-2; }
+  .prose-ink h1, .prose-ink h2, .prose-ink h3 {
+    @apply font-serif-display font-semibold mt-4 mb-2;
+  }
+  .prose-ink ul { @apply list-disc pl-5 my-2; }
+  .prose-ink ol { @apply list-decimal pl-5 my-2; }
+  .prose-ink strong { @apply font-semibold text-foreground; }
+  .prose-ink em { @apply italic; }
+  .prose-ink blockquote {
+    @apply border-l-2 border-primary/50 pl-4 italic text-foreground/80 my-3;
+  }
+  .prose-ink code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm;
+  }
+  .prose-ink img {
+    @apply rounded-lg my-3 max-w-full h-auto border border-border/40;
+  }
+
+  .tiptap {
+    @apply outline-none min-h-[220px];
+  }
+  .tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    @apply text-muted-foreground/60 float-left h-0 pointer-events-none;
+  }
+}
+
+@layer utilities {
+  .text-gold { color: hsl(var(--gold)); }
+  .bg-gold { background-color: hsl(var(--gold)); }
+  .fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
