@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useMemo } from "react";
+import { useState, KeyboardEvent, useMemo, useRef, FocusEvent } from "react";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,6 +10,7 @@ interface Props {
 
 export function TagInput({ value, onChange, suggestions = [] }: Props) {
   const [input, setInput] = useState("");
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     const q = input.trim().toLowerCase();
@@ -37,8 +38,13 @@ export function TagInput({ value, onChange, suggestions = [] }: Props) {
     }
   };
 
+  const onBlur = (e: FocusEvent<HTMLInputElement>) => {
+    if (wrapperRef.current?.contains(e.relatedTarget as Node)) return;
+    add(input);
+  };
+
   return (
-    <div className="relative">
+    <div className="relative" ref={wrapperRef}>
       <div className="flex flex-wrap gap-1.5 rounded-xl border border-border bg-background/40 px-3 py-2 focus-within:border-primary/50 transition-colors min-h-[44px]">
         {value.map((tag) => (
           <Badge
@@ -61,6 +67,7 @@ export function TagInput({ value, onChange, suggestions = [] }: Props) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
+          onBlur={onBlur}
           placeholder={value.length === 0 ? "Add tags…" : ""}
           className="flex-1 min-w-[120px] bg-transparent outline-none text-sm placeholder:text-muted-foreground/60"
         />
