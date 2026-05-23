@@ -1,5 +1,12 @@
 import { useMemo, useRef, useState } from "react";
-import { Plus, Search, BookOpen, Download, Upload, MoreHorizontal } from "lucide-react";
+import {
+  Plus,
+  Search,
+  BookOpen,
+  Download,
+  Upload,
+  MoreHorizontal,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,20 +93,43 @@ const Index = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pendingImport, setPendingImport] = useState<Entry[] | null>(null);
 
-  const handleExport = () => {
-    const blob = new Blob([JSON.stringify(entries, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const stamp = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `inkwell-${stamp}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${entries.length} ${entries.length === 1 ? "entry" : "entries"}`);
+  const handleExport = async () => {
+    try {
+      // Get the entries data (from your original code)
+      if (!entries || entries.length === 0) {
+        toast.error("No entries to export");
+        return;
+      }
+
+      // Use Tauri dialog plugin
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+
+      // Create stamp for filename like original code
+      const stamp = new Date().toISOString().slice(0, 10);
+
+      // Ask user where to save
+      const filePath = await save({
+        defaultPath: `inkwell-${stamp}.json`,
+        filters: [
+          {
+            name: "JSON",
+            extensions: ["json"],
+          },
+        ],
+      });
+
+      if (filePath) {
+        // Write the entries data to file
+        await writeTextFile(filePath, JSON.stringify(entries, null, 2));
+        toast.success(
+          `Exported ${entries.length} ${entries.length === 1 ? "entry" : "entries"}`,
+        );
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+      toast.error("Failed to export entries");
+    }
   };
 
   const handleImportFile = async (file: File) => {
@@ -125,8 +155,8 @@ const Index = () => {
     filter.kind === "all"
       ? "All entries"
       : filter.kind === "favorites"
-      ? "Favorites"
-      : filter.value;
+        ? "Favorites"
+        : filter.value;
 
   return (
     <SidebarProvider>
@@ -154,16 +184,24 @@ const Index = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={handleExport} disabled={entries.length === 0}>
+                  <DropdownMenuItem
+                    onClick={handleExport}
+                    disabled={entries.length === 0}
+                  >
                     <Download className="h-4 w-4" />
                     Export library
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                  <DropdownMenuItem
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     <Upload className="h-4 w-4" />
                     Import library…
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                  <DropdownMenuItem
+                    disabled
+                    className="text-xs text-muted-foreground"
+                  >
                     JSON format
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -186,7 +224,6 @@ const Index = () => {
             </div>
           </header>
 
-
           <main className="flex-1 px-4 sm:px-8 py-8">
             <div className="max-w-7xl mx-auto">
               <div className="flex items-end justify-between mb-8 fade-in">
@@ -198,7 +235,8 @@ const Index = () => {
                     {filterLabel}
                   </h2>
                   <p className="text-sm text-muted-foreground mt-2">
-                    {filtered.length} {filtered.length === 1 ? "entry" : "entries"}
+                    {filtered.length}{" "}
+                    {filtered.length === 1 ? "entry" : "entries"}
                   </p>
                 </div>
               </div>
@@ -237,9 +275,7 @@ const Index = () => {
         open={editorOpen}
         onOpenChange={setEditorOpen}
         entry={editingEntry}
-        defaultCategory={
-          filter.kind === "category" ? filter.value : undefined
-        }
+        defaultCategory={filter.kind === "category" ? filter.value : undefined}
       />
 
       <EntryView
@@ -323,9 +359,7 @@ const Index = () => {
               onClick={() => {
                 if (!pendingImport) return;
                 const r = importEntries(pendingImport, "merge");
-                toast.success(
-                  `Imported ${r.added} new, updated ${r.updated}`
-                );
+                toast.success(`Imported ${r.added} new, updated ${r.updated}`);
                 setPendingImport(null);
               }}
             >
@@ -335,11 +369,16 @@ const Index = () => {
         </AlertDialogContent>
       </AlertDialog>
     </SidebarProvider>
-
   );
 };
 
-function EmptyState({ onNew, hasQuery }: { onNew: () => void; hasQuery: boolean }) {
+function EmptyState({
+  onNew,
+  hasQuery,
+}: {
+  onNew: () => void;
+  hasQuery: boolean;
+}) {
   return (
     <div className="ink-card p-12 text-center fade-in">
       <div className="h-14 w-14 rounded-2xl bg-primary/10 grid place-items-center mx-auto mb-4">
