@@ -3,6 +3,11 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Image from "@tiptap/extension-image";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { LineHeight } from "@/lib/tiptap-line-height";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +25,18 @@ import {
   Lock,
   Unlock,
   Ruler,
+  Table as TableIcon,
+  Rows3,
+  Columns3,
+  Trash,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -78,6 +94,14 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] } }),
       Placeholder.configure({ placeholder: placeholder ?? "Begin writing…" }),
+      LineHeight,
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: { class: "tt-table" },
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       ResizableImage.configure({
         inline: false,
         allowBase64: true,
@@ -110,7 +134,7 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
         const files = (event as DragEvent).dataTransfer?.files;
         if (!files || files.length === 0) return false;
         const imageFiles = Array.from(files).filter((f) =>
-          f.type.startsWith("image/")
+          f.type.startsWith("image/"),
         );
         if (imageFiles.length === 0) return false;
         event.preventDefault();
@@ -158,7 +182,10 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
     }
   };
 
-  const setImageSize = (size: { width?: number | null; height?: number | null }) => {
+  const setImageSize = (size: {
+    width?: number | null;
+    height?: number | null;
+  }) => {
     editor?.chain().focus().updateAttributes("image", size).run();
   };
 
@@ -206,35 +233,175 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
     height?: number | null;
   };
 
+  const modKey =
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad/.test(navigator.platform)
+      ? "⌘"
+      : "Ctrl";
+
   return (
     <div className="rounded-xl border border-border bg-background/40 focus-within:border-primary/50 transition-colors">
       <div className="flex items-center gap-0.5 border-b border-border/60 px-2 py-1.5">
-        <ToolbarBtn label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
+        <ToolbarBtn
+          label={`Bold (${modKey}+B)`}
+          active={editor.isActive("bold")}
+          onClick={() => editor.chain().focus().toggleBold().run()}
+        >
           <Bold className="h-4 w-4" />
         </ToolbarBtn>
-        <ToolbarBtn label="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <ToolbarBtn
+          label={`Italic (${modKey}+I)`}
+          active={editor.isActive("italic")}
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+        >
           <Italic className="h-4 w-4" />
         </ToolbarBtn>
-        <ToolbarBtn label="Heading" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+        <ToolbarBtn
+          label="Heading"
+          active={editor.isActive("heading", { level: 2 })}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 2 }).run()
+          }
+        >
           <Heading2 className="h-4 w-4" />
         </ToolbarBtn>
-        <ToolbarBtn label="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <ToolbarBtn
+          label="Bullet list"
+          active={editor.isActive("bulletList")}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+        >
           <List className="h-4 w-4" />
         </ToolbarBtn>
-        <ToolbarBtn label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <ToolbarBtn
+          label="Numbered list"
+          active={editor.isActive("orderedList")}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        >
           <ListOrdered className="h-4 w-4" />
         </ToolbarBtn>
-        <ToolbarBtn label="Quote" active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <ToolbarBtn
+          label="Quote"
+          active={editor.isActive("blockquote")}
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        >
           <Quote className="h-4 w-4" />
         </ToolbarBtn>
-        <ToolbarBtn label="Insert image" onClick={() => fileInputRef.current?.click()}>
+        <ToolbarBtn
+          label="Insert image"
+          onClick={() => fileInputRef.current?.click()}
+        >
           <ImagePlus className="h-4 w-4" />
         </ToolbarBtn>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label="Table"
+              title="Table"
+              className="h-8 w-8"
+            >
+              <TableIcon className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuItem
+              onClick={() =>
+                editor
+                  .chain()
+                  .focus()
+                  .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                  .run()
+              }
+            >
+              Insert 3×3 table
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={!editor.can().addRowAfter()}
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+            >
+              <Rows3 className="h-3.5 w-3.5 mr-2" /> Add row
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!editor.can().addColumnAfter()}
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+            >
+              <Columns3 className="h-3.5 w-3.5 mr-2" /> Add column
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!editor.can().deleteRow()}
+              onClick={() => editor.chain().focus().deleteRow().run()}
+            >
+              Delete row
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!editor.can().deleteColumn()}
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+            >
+              Delete column
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!editor.can().toggleHeaderRow()}
+              onClick={() => editor.chain().focus().toggleHeaderRow().run()}
+            >
+              Toggle header row
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={!editor.can().deleteTable()}
+              onClick={() => editor.chain().focus().deleteTable().run()}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash className="h-3.5 w-3.5 mr-2" /> Delete table
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              aria-label="Line height"
+              title="Line height"
+              className="h-8 px-2 text-xs gap-1"
+            >
+              <span className="leading-none">↕</span> Line
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-32">
+            {["1", "1.15", "1.5", "1.75", "2"].map((lh) => (
+              <DropdownMenuItem
+                key={lh}
+                onClick={() => editor.chain().focus().setLineHeight(lh).run()}
+              >
+                {lh}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => editor.chain().focus().unsetLineHeight().run()}
+            >
+              Reset
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <div className="ml-auto flex">
-          <ToolbarBtn label="Undo" onClick={() => editor.chain().focus().undo().run()}>
+          <ToolbarBtn
+            label="Undo"
+            onClick={() => editor.chain().focus().undo().run()}
+          >
             <Undo2 className="h-4 w-4" />
           </ToolbarBtn>
-          <ToolbarBtn label="Redo" onClick={() => editor.chain().focus().redo().run()}>
+          <ToolbarBtn
+            label="Redo"
+            onClick={() => editor.chain().focus().redo().run()}
+          >
             <Redo2 className="h-4 w-4" />
           </ToolbarBtn>
         </div>
@@ -310,33 +477,45 @@ interface ImageSizeControlsProps {
   onChange: (size: { width?: number | null; height?: number | null }) => void;
 }
 
-function ImageSizeControls({ src, width, height, onChange }: ImageSizeControlsProps) {
+function ImageSizeControls({
+  src,
+  width,
+  height,
+  onChange,
+}: ImageSizeControlsProps) {
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [locked, setLocked] = useState(true);
   const [precise, setPrecise] = useState(false); // false = S/M/L, true = W×H inputs
-  const [wInput, setWInput] = useState<string>(width != null ? String(width) : "");
-  const [hInput, setHInput] = useState<string>(height != null ? String(height) : "");
+  const [wInput, setWInput] = useState<string>(
+    width != null ? String(width) : "",
+  );
+  const [hInput, setHInput] = useState<string>(
+    height != null ? String(height) : "",
+  );
 
   // Load natural size from the src
   useEffect(() => {
     if (!src) return;
     const img = new window.Image();
-    img.onload = () => setNatural({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onload = () =>
+      setNatural({ w: img.naturalWidth, h: img.naturalHeight });
     img.src = src;
   }, [src]);
 
   // Sync inputs when selection / attrs change externally
   useEffect(() => {
     setWInput(width != null ? String(width) : natural ? String(natural.w) : "");
-    setHInput(height != null ? String(height) : natural ? String(natural.h) : "");
+    setHInput(
+      height != null ? String(height) : natural ? String(natural.h) : "",
+    );
   }, [width, height, natural]);
 
   const ratio =
     natural && natural.h > 0
       ? natural.w / natural.h
       : width && height
-      ? width / height
-      : null;
+        ? width / height
+        : null;
 
   const applyWidth = (px: number) => {
     if (ratio) {
@@ -353,7 +532,9 @@ function ImageSizeControls({ src, width, height, onChange }: ImageSizeControlsPr
   ];
 
   const activePreset =
-    width != null ? PRESETS.find((p) => Math.abs(p.px - width) <= 2)?.key : null;
+    width != null
+      ? PRESETS.find((p) => Math.abs(p.px - width) <= 2)?.key
+      : null;
 
   const commitWidth = (raw: string) => {
     const n = parseInt(raw, 10);
@@ -421,7 +602,7 @@ function ImageSizeControls({ src, width, height, onChange }: ImageSizeControlsPr
               onClick={() => applyWidth(p.px)}
               className={cn(
                 "px-2 h-7 rounded-md text-xs font-medium transition-colors hover:bg-accent",
-                activePreset === p.key && "bg-accent text-accent-foreground"
+                activePreset === p.key && "bg-accent text-accent-foreground",
               )}
               title={`${p.px}px wide`}
             >
@@ -431,19 +612,33 @@ function ImageSizeControls({ src, width, height, onChange }: ImageSizeControlsPr
         </>
       ) : (
         <>
-          <NumberField label="W" value={wInput} onValueChange={setWInput} onCommit={commitWidth} />
+          <NumberField
+            label="W"
+            value={wInput}
+            onValueChange={setWInput}
+            onCommit={commitWidth}
+          />
           <button
             type="button"
             onClick={() => setLocked((l) => !l)}
             className={cn(
               "h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition-colors",
-              locked ? "text-primary" : "text-muted-foreground"
+              locked ? "text-primary" : "text-muted-foreground",
             )}
             title={locked ? "Aspect ratio locked" : "Aspect ratio unlocked"}
           >
-            {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+            {locked ? (
+              <Lock className="h-3.5 w-3.5" />
+            ) : (
+              <Unlock className="h-3.5 w-3.5" />
+            )}
           </button>
-          <NumberField label="H" value={hInput} onValueChange={setHInput} onCommit={commitHeight} />
+          <NumberField
+            label="H"
+            value={hInput}
+            onValueChange={setHInput}
+            onCommit={commitHeight}
+          />
         </>
       )}
       <button
@@ -451,7 +646,7 @@ function ImageSizeControls({ src, width, height, onChange }: ImageSizeControlsPr
         onClick={() => setPrecise((p) => !p)}
         className={cn(
           "h-7 w-7 grid place-items-center rounded-md hover:bg-accent transition-colors ml-0.5",
-          precise ? "text-primary bg-accent" : "text-muted-foreground"
+          precise ? "text-primary bg-accent" : "text-muted-foreground",
         )}
         title={precise ? "Use presets (S/M/L)" : "Set exact width × height"}
       >

@@ -1,5 +1,10 @@
-import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useEffect, useRef, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -23,7 +28,12 @@ interface Props {
   defaultCategory?: Category;
 }
 
-export function EntryEditor({ open, onOpenChange, entry, defaultCategory }: Props) {
+export function EntryEditor({
+  open,
+  onOpenChange,
+  entry,
+  defaultCategory,
+}: Props) {
   const { entries, upsert } = useEntries();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<Category>("Emotion");
@@ -37,8 +47,8 @@ export function EntryEditor({ open, onOpenChange, entry, defaultCategory }: Prop
       entries
         .filter((e) => e.category === "Other" && e.customCategory)
         .map((e) => e.customCategory!.trim())
-        .filter(Boolean)
-    )
+        .filter(Boolean),
+    ),
   ).sort();
 
   useEffect(() => {
@@ -76,10 +86,25 @@ export function EntryEditor({ open, onOpenChange, entry, defaultCategory }: Prop
     onOpenChange(false);
   };
 
+  const saveRef = useRef(onSave);
+  saveRef.current = onSave;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveRef.current();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="max-w-5xl w-[95vw] max-h-[92vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
@@ -103,7 +128,10 @@ export function EntryEditor({ open, onOpenChange, entry, defaultCategory }: Prop
             </div>
             <div className="space-y-1.5">
               <Label>Category</Label>
-              <Select value={category} onValueChange={(v) => setCategory(v as Category)}>
+              <Select
+                value={category}
+                onValueChange={(v) => setCategory(v as Category)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -156,7 +184,9 @@ export function EntryEditor({ open, onOpenChange, entry, defaultCategory }: Prop
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={onSave}>{entry ? "Save changes" : "Add to library"}</Button>
+            <Button onClick={onSave}>
+              {entry ? "Save changes" : "Add to library"}
+            </Button>
           </div>
         </div>
       </DialogContent>
