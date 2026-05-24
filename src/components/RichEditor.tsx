@@ -307,6 +307,67 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-52">
+            {(() => {
+              const { from, to, empty } = editor.state.selection;
+              const text = empty
+                ? ""
+                : editor.state.doc.textBetween(from, to, "\n", "\n");
+              const lines = text
+                .split(/\r?\n/)
+                .map((l) => l.trim())
+                .filter((l) => l.length > 0);
+              const escape = (s: string) => s.replace(/</g, "&lt;");
+
+              const insertFromLines = (cols: number) => {
+                if (lines.length === 0) return;
+                const rows: string[] = [];
+                if (cols <= 1) {
+                  for (const line of lines) {
+                    const cells = line
+                      .split(/\t/)
+                      .map((c) => `<td><p>${escape(c)}</p></td>`)
+                      .join("");
+                    rows.push(`<tr>${cells}</tr>`);
+                  }
+                } else {
+                  for (let i = 0; i < lines.length; i += cols) {
+                    const chunk = lines.slice(i, i + cols);
+                    while (chunk.length < cols) chunk.push("");
+                    const cells = chunk
+                      .map((c) => `<td><p>${escape(c)}</p></td>`)
+                      .join("");
+                    rows.push(`<tr>${cells}</tr>`);
+                  }
+                }
+                const html = `<table>${rows.join("")}</table>`;
+                editor
+                  .chain()
+                  .focus()
+                  .deleteSelection()
+                  .insertContent(html)
+                  .run();
+              };
+
+              if (lines.length > 0) {
+                const rows2 = Math.ceil(lines.length / 2);
+                const rows3 = Math.ceil(lines.length / 3);
+                return (
+                  <>
+                    <DropdownMenuItem onClick={() => insertFromLines(1)}>
+                      From selection · 1 × {lines.length}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => insertFromLines(2)}>
+                      From selection · 2 × {rows2}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => insertFromLines(3)}>
+                      From selection · 3 × {rows3}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                );
+              }
+              return null;
+            })()}
             <DropdownMenuItem
               onClick={() =>
                 editor
@@ -316,7 +377,7 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
                   .run()
               }
             >
-              Insert 3×3 table
+              Insert empty 3 × 3
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

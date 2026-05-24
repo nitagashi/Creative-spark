@@ -1,5 +1,10 @@
 import { useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Pencil } from "lucide-react";
@@ -15,7 +20,13 @@ interface Props {
   onEdit?: () => void;
 }
 
-export function EntryView({ entry, open, onOpenChange, onToggleFavorite, onEdit }: Props) {
+export function EntryView({
+  entry,
+  open,
+  onOpenChange,
+  onToggleFavorite,
+  onEdit,
+}: Props) {
   useEffect(() => {
     if (!open || !onEdit) return;
     const handler = (e: KeyboardEvent) => {
@@ -40,7 +51,7 @@ export function EntryView({ entry, open, onOpenChange, onToggleFavorite, onEdit 
   if (!entry) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl w-[96vw] max-h-[94vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
@@ -74,7 +85,9 @@ export function EntryView({ entry, open, onOpenChange, onToggleFavorite, onEdit 
                 <Star
                   className={cn(
                     "h-5 w-5",
-                    entry.favorite ? "fill-gold text-gold" : "text-muted-foreground"
+                    entry.favorite
+                      ? "fill-gold text-gold"
+                      : "text-muted-foreground",
                   )}
                 />
               </button>
