@@ -1,14 +1,6 @@
-export type Category =
-  | "Emotion"
-  | "Behavior"
-  | "Injury"
-  | "Character Trait"
-  | "Name"
-  | "Setting"
-  | "Object"
-  | "Other";
+export type Category = string;
 
-export const CATEGORIES: Category[] = [
+export const BUILTIN_CATEGORIES = [
   "Emotion",
   "Behavior",
   "Injury",
@@ -16,14 +8,20 @@ export const CATEGORIES: Category[] = [
   "Name",
   "Setting",
   "Object",
-  "Other",
-];
+] as const;
+
+// Kept for backward-compat with older code paths
+export const CATEGORIES: Category[] = [...BUILTIN_CATEGORIES];
+
+export function isBuiltinCategory(c: string): boolean {
+  return (BUILTIN_CATEGORIES as readonly string[]).includes(c);
+}
 
 export interface Entry {
   id: string;
   title: string;
   category: Category;
-  customCategory?: string; // used when category === "Other"
+  customCategory?: string; // legacy: used when category === "Other"
   description: string; // HTML from tiptap
   tags: string[];
   favorite: boolean;
@@ -31,7 +29,10 @@ export interface Entry {
   updatedAt: number;
 }
 
-export function displayCategory(e: { category: Category; customCategory?: string }): string {
+export function displayCategory(e: {
+  category: Category;
+  customCategory?: string;
+}): string {
   if (e.category === "Other" && e.customCategory && e.customCategory.trim()) {
     return e.customCategory.trim();
   }

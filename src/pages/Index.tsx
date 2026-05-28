@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEntries, stripHtml, validateEntries } from "@/lib/store";
 import type { Entry } from "@/lib/types";
-import { CATEGORIES } from "@/lib/types";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,7 +47,6 @@ const Index = () => {
 
   const counts = useMemo(() => {
     const byCategory: Record<string, number> = {};
-    CATEGORIES.forEach((c) => (byCategory[c] = 0));
     entries.forEach((e) => {
       byCategory[e.category] = (byCategory[e.category] ?? 0) + 1;
     });

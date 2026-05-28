@@ -19,17 +19,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ChevronDown, X, Plus, Check } from "lucide-react";
 import { RichEditor } from "./RichEditor";
 import { TagInput } from "./TagInput";
-import { CATEGORIES, type Category, type Entry } from "@/lib/types";
-import { useEntries } from "@/lib/store";
+import {
+  BUILTIN_CATEGORIES,
+  isBuiltinCategory,
+  type Category,
+  type Entry,
+} from "@/lib/types";
+import { useEntries, useCustomCategories } from "@/lib/store";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -61,15 +66,9 @@ export function EntryEditor({
     savedAt: number;
   }>(null);
 
+  const { customCategories, addCustomCategory, removeCustomCategory } =
+    useCustomCategories();
   const allTags = Array.from(new Set(entries.flatMap((e) => e.tags))).sort();
-  const customCategorySuggestions = Array.from(
-    new Set(
-      entries
-        .filter((e) => e.category === "Other" && e.customCategory)
-        .map((e) => e.customCategory!.trim())
-        .filter(Boolean),
-    ),
-  ).sort();
 
   const initialSnapshotRef = useRef<string>("");
   const draftKey = useMemo(
@@ -174,16 +173,12 @@ export function EntryEditor({
       toast.error("Give it a title first");
       return false;
     }
-    if (category === "Other" && !customCategory.trim()) {
-      toast.error("Name your custom category");
-      return false;
-    }
     const now = Date.now();
     upsert({
       id: entry?.id ?? crypto.randomUUID(),
       title: title.trim(),
       category,
-      customCategory: category === "Other" ? customCategory.trim() : undefined,
+      customCategory: undefined,
       description,
       tags,
       favorite: entry?.favorite ?? false,
@@ -193,7 +188,7 @@ export function EntryEditor({
     initialSnapshotRef.current = JSON.stringify({
       t: title.trim(),
       c: category,
-      cc: category === "Other" ? customCategory.trim() : "",
+      cc: "",
       d: description,
       tg: tags,
     });
@@ -296,43 +291,27 @@ export function EntryEditor({
               </div>
               <div className="space-y-1.5">
                 <Label>Category</Label>
-                <Select
+                <CategoryPicker
                   value={category}
-                  onValueChange={(v) => setCategory(v as Category)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={setCategory}
+                  builtin={[...BUILTIN_CATEGORIES]}
+                  custom={customCategories}
+                  onAdd={(name) => {
+                    addCustomCategory(name);
+                    setCategory(name);
+                  }}
+                  onDelete={(name) => {
+                    const inUse = entries.some((e) => e.category === name);
+                    if (inUse) {
+                      toast.error(`"${name}" is still used by some entries`);
+                      return;
+                    }
+                    removeCustomCategory(name);
+                    if (category === name) setCategory("Emotion");
+                  }}
+                />
               </div>
             </div>
-
-            {category === "Other" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="customCategory">Custom category name</Label>
-                <Input
-                  id="customCategory"
-                  value={customCategory}
-                  onChange={(e) => setCustomCategory(e.target.value)}
-                  placeholder="e.g. Weather, Magic System, Cuisine…"
-                  list="custom-category-suggestions"
-                />
-                {customCategorySuggestions.length > 0 && (
-                  <datalist id="custom-category-suggestions">
-                    {customCategorySuggestions.map((s) => (
-                      <option key={s} value={s} />
-                    ))}
-                  </datalist>
-                )}
-              </div>
-            )}
 
             <div className="space-y-1.5">
               <Label>Description</Label>
@@ -450,5 +429,146 @@ export function EntryEditor({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+interface CategoryPickerProps {
+  value: string;
+  onChange: (v: string) => void;
+  builtin: string[];
+  custom: string[];
+  onAdd: (name: string) => void;
+  onDelete: (name: string) => void;
+}
+
+function CategoryPicker({
+  value,
+  onChange,
+  builtin,
+  custom,
+  onAdd,
+  onDelete,
+}: CategoryPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const all = [...builtin, ...custom];
+  const trimmed = draft.trim();
+  const exists = all.some((c) => c.toLowerCase() === trimmed.toLowerCase());
+  const canAdd = trimmed.length > 0 && !exists;
+
+  const submit = () => {
+    if (!canAdd) return;
+    onAdd(trimmed);
+    setDraft("");
+    setOpen(false);
+  };
+
+  const Row = ({ name, deletable }: { name: string; deletable: boolean }) => {
+    const selected = value === name;
+    return (
+      <div
+        className={cn(
+          "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer hover:bg-accent",
+          selected && "bg-accent/60",
+        )}
+        onClick={() => {
+          onChange(name);
+          setOpen(false);
+        }}
+      >
+        <Check
+          className={cn(
+            "h-3.5 w-3.5 shrink-0",
+            selected ? "opacity-100 text-primary" : "opacity-0",
+          )}
+        />
+        <span className="flex-1 truncate">{name}</span>
+        {deletable && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(name);
+            }}
+            className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-destructive/10 hover:text-destructive transition"
+            aria-label={`Delete category ${name}`}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          className="w-full justify-between font-normal"
+        >
+          <span className="truncate">{value || "Select category"}</span>
+          <ChevronDown className="h-4 w-4 opacity-60 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="p-1 w-[var(--radix-popover-trigger-width)] min-w-[240px]"
+      >
+        <div className="max-h-64 overflow-y-auto">
+          <div className="px-2 pt-1.5 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+            Built-in
+          </div>
+          {builtin.map((c) => (
+            <Row key={c} name={c} deletable={false} />
+          ))}
+          {custom.length > 0 && (
+            <>
+              <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                Custom
+              </div>
+              {custom.map((c) => (
+                <Row key={c} name={c} deletable />
+              ))}
+            </>
+          )}
+          {!isBuiltinCategory(value) && value && !custom.includes(value) && (
+            <>
+              <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                Current
+              </div>
+              <Row name={value} deletable={false} />
+            </>
+          )}
+        </div>
+        <div className="border-t mt-1 pt-1 flex items-center gap-1">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            placeholder="New category…"
+            className="h-8 text-sm"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            disabled={!canAdd}
+            onClick={submit}
+            aria-label="Add category"
+            className="h-8 w-8 shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
