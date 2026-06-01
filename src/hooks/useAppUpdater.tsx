@@ -35,7 +35,7 @@ export function useAppUpdater() {
         setUpdateAvailable(true);
         setUpdateVersion(update.version);
         // setUpdateNotes(update.notes || "");
-        console.log("Update found...");
+        console.log("Update found:", update.version);
 
         const updateInfo = {
           version: update.version,
