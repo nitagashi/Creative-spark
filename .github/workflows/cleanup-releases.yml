@@ -36,7 +36,7 @@ jobs:
             console.log(`Total published releases: ${publishedReleases.length}`);
 
             // Keep latest 5, delete the rest
-            const toDelete = publishedReleases.slice(1);
+            const toDelete = publishedReleases.slice(2);
 
             if (toDelete.length === 0) {
               console.log("No releases to delete");
