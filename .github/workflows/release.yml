@@ -11,46 +11,144 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump type"
+        required: false
+        default: ""
+        type: choice
+        options:
+          - ""
+          - patch
+          - minor
+          - major
 
 jobs:
-  version:
+  # Auto-bump version in tauri.conf.json
+  bump-version:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.changelog.outputs.version }}
-      tag: ${{ steps.changelog.outputs.tag }}
+      version: ${{ steps.bump.outputs.version }}
+      tag: v${{ steps.bump.outputs.version }}
+      bumped: ${{ steps.bump.outputs.bumped }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Conventional Changelog Action
-        id: changelog
-        uses: TriPSs/conventional-changelog-action@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          version-file: "./src-tauri/tauri.conf.json"
-          version-path: "version"
-          output-file: "CHANGELOG.md"
-          skip-version-file: "false"
-          skip-commit: "false"
-          skip-tag: "false"
-          # Only bump version if there are conventional commits
-          skip-on-version-bump: "false"
-          git-pull-method: "--ff-only"
-          tag-prefix: "v"
+      - name: Get current version from tauri.conf.json
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version in config: $CURRENT_VERSION"
 
-      - name: Push version changes
-        uses: ad-m/github-push-action@v0.8.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref_name }}
-          force: false
-          tags: true
+      - name: Check if tag already exists for current version
+        id: check_tag
+        run: |
+          CURRENT_VERSION="${{ steps.current_version.outputs.current }}"
+          TAG="v$CURRENT_VERSION"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag $TAG already exists - this version has been released"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag $TAG does not exist - will create release"
+          fi
+
+      - name: Bump version (only if needed)
+        id: bump
+        run: |
+          CURRENT="${{ steps.current_version.outputs.current }}"
+          TAG_EXISTS="${{ steps.check_tag.outputs.exists }}"
+
+          # If tag already exists for current version, bump to a new version
+          if [[ "$TAG_EXISTS" == "true" ]]; then
+            echo "Current version $CURRENT already has a release tag"
+            
+            # Split version into parts
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+            
+            # Determine bump type
+            if [[ "${{ github.event.inputs.bump_type }}" != "" && "${{ github.event.inputs.bump_type }}" != "" ]]; then
+              BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+            else
+              # Auto-detect from commit messages
+              COMMIT_MSG=$(git log -1 --pretty=%B)
+              if [[ "$COMMIT_MSG" =~ ^feat\(?[a-z]*\)?!?: ]] || [[ "$COMMIT_MSG" =~ BREAKING\ CHANGE ]]; then
+                BUMP_TYPE="major"
+              elif [[ "$COMMIT_MSG" =~ ^feat ]]; then
+                BUMP_TYPE="minor"
+              else
+                BUMP_TYPE="patch"
+              fi
+            fi
+            
+            echo "Bump type: $BUMP_TYPE"
+            
+            # Calculate new version
+            case $BUMP_TYPE in
+              major)
+                NEW_VERSION="$((MAJOR + 1)).0.0"
+                ;;
+              minor)
+                NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+                ;;
+              patch)
+                NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+                ;;
+            esac
+            
+            echo "New version: $NEW_VERSION"
+            echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+            echo "bumped=true" >> $GITHUB_OUTPUT
+            
+            # Update tauri.conf.json
+            node -e "
+              const fs = require('fs');
+              const config = JSON.parse(fs.readFileSync('./src-tauri/tauri.conf.json', 'utf8'));
+              config.version = '$NEW_VERSION';
+              fs.writeFileSync('./src-tauri/tauri.conf.json', JSON.stringify(config, null, 2));
+            "
+            
+            # Update package.json if it exists
+            if [ -f "package.json" ]; then
+              node -e "
+                const fs = require('fs');
+                const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+                pkg.version = '$NEW_VERSION';
+                fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
+              "
+            fi
+            
+            # Commit and push the version bump
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add src-tauri/tauri.conf.json package.json 2>/dev/null || true
+            git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
+            git push origin ${{ github.ref_name }}
+            
+            # Create and push tag for new version
+            git tag "v$NEW_VERSION"
+            git push origin "v$NEW_VERSION"
+          else
+            # First release - use current version from config
+            echo "First release - using current version: $CURRENT"
+            echo "version=$CURRENT" >> $GITHUB_OUTPUT
+            echo "bumped=false" >> $GITHUB_OUTPUT
+            
+            # Create tag for current version
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "v$CURRENT"
+            git push origin "v$CURRENT"
+          fi
 
   # Main build job
   publish-tauri:
-    needs: version
+    needs: bump-version
     permissions:
       contents: write
     strategy:
@@ -65,6 +163,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Setup Node.js
       - name: Setup Node
@@ -96,8 +195,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: ${{ needs.version.outputs.tag }}
-          releaseName: "v${{ needs.version.outputs.version }}"
+          tagName: v${{ needs.bump-version.outputs.version }}
+          releaseName: "v${{ needs.bump-version.outputs.version }}"
           releaseBody: "See the assets to download this version."
           releaseDraft: false
           prerelease: false
