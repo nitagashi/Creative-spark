@@ -28,16 +28,17 @@ export function useAppUpdater() {
   const checkForUpdates = async (silent: boolean = false) => {
     setChecking(true);
     try {
+      console.log("Checking for updates...");
       const update = await check();
 
       if (update) {
         setUpdateAvailable(true);
         setUpdateVersion(update.version);
-        setUpdateNotes(update.notes || "");
+        // setUpdateNotes(update.notes || "");
 
         const updateInfo = {
           version: update.version,
-          notes: update.notes || "",
+          // notes: update.notes || "",
           date: update.date,
         };
 

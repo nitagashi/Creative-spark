@@ -6,12 +6,27 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAppUpdater } from "./hooks/useAppUpdater";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   // Get the UpdateDialog component from the hook
-  const { UpdateDialog } = useAppUpdater();
+  const { checkForUpdates, UpdateDialog } = useAppUpdater();
+  // checkForUpdates();
+
+  useEffect(() => {
+    // Check on app start
+    checkForUpdates(true); // silent mode, won't prompt if no update
+
+    // Check every 6 hours
+    const interval = setInterval(
+      () => checkForUpdates(true),
+      6 * 60 * 60 * 1000,
+    );
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
