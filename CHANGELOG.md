@@ -1,9 +1,11 @@
-## [0.1.5](https://github.com/nitagashi/Creative-spark/compare/v0.1.4...v0.1.5) (2026-06-01)
+## [0.1.6](https://github.com/nitagashi/Creative-spark/compare/v0.1.4...v0.1.6) (2026-06-01)
 
 
 ### Bug Fixes
 
-* testing ([5a9403d](https://github.com/nitagashi/Creative-spark/commit/5a9403d4bc2ca7e323a739bed471734368258417))
+* autoupdate modal not showing ([7adad62](https://github.com/nitagashi/Creative-spark/commit/7adad628511580ca6a183526d2534a07b5c20c86))
+* changes ([de1924b](https://github.com/nitagashi/Creative-spark/commit/de1924b49e45d5e62b133cabac1c13ef9320b27c))
+* testing ([01f5a12](https://github.com/nitagashi/Creative-spark/commit/01f5a1296c677846b1b07b417fa169b7d67d91d2))
 
 
 
