@@ -6,12 +6,23 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAppUpdater } from "./hooks/useAppUpdater";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  // This automatically checks for updates
-  useAppUpdater();
+  const { checkForUpdates, UpdateDialog } = useAppUpdater();
+
+  useEffect(() => {
+    checkForUpdates(true);
+
+    const interval = setInterval(
+      () => checkForUpdates(true),
+      6 * 60 * 60 * 1000,
+    );
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -24,6 +35,7 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        <UpdateDialog />
       </TooltipProvider>
     </QueryClientProvider>
   );

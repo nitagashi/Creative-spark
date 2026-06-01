@@ -3,13 +3,54 @@ name: "publish"
 on:
   push:
     branches:
-      - release_app
+      - main
     tags:
       - "v*"
+  pull_request:
+    types: [closed]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.changelog.outputs.version }}
+      tag: ${{ steps.changelog.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Conventional Changelog Action
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version-file: "./src-tauri/tauri.conf.json"
+          version-path: "version"
+          output-file: "CHANGELOG.md"
+          skip-version-file: "false"
+          skip-commit: "false"
+          skip-tag: "false"
+          # Only bump version if there are conventional commits
+          skip-on-version-bump: "false"
+          git-pull-method: "--ff-only"
+          tag-prefix: "v"
+
+      - name: Push version changes
+        uses: ad-m/github-push-action@v0.8.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
+          force: false
+          tags: true
+
+  # Main build job
   publish-tauri:
+    needs: version
     permissions:
       contents: write
     strategy:
@@ -22,6 +63,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Setup Node.js
       - name: Setup Node
@@ -33,8 +76,10 @@ jobs:
       # Setup Rust
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          profile: minimal
 
-      # Rust cache for faster builds
+      # Rust cache
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
@@ -51,9 +96,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "App v__VERSION__"
+          tagName: ${{ needs.version.outputs.tag }}
+          releaseName: "v${{ needs.version.outputs.version }}"
           releaseBody: "See the assets to download this version."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
