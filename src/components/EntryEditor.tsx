@@ -23,7 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ChevronDown, X, Plus, Check } from "lucide-react";
+import { ChevronDown, X, Plus, Check, Pencil } from "lucide-react";
 import { RichEditor } from "./RichEditor";
 import { TagInput } from "./TagInput";
 import {
@@ -35,6 +35,7 @@ import {
 import { useEntries, useCustomCategories } from "@/lib/store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { RenameCategoryDialog } from "./RenameCategoryDialog";
 
 interface Props {
   open: boolean;
@@ -66,8 +67,12 @@ export function EntryEditor({
     savedAt: number;
   }>(null);
 
-  const { customCategories, addCustomCategory, removeCustomCategory } =
-    useCustomCategories();
+  const {
+    customCategories,
+    addCustomCategory,
+    removeCustomCategory,
+    renameCustomCategory,
+  } = useCustomCategories();
   const allTags = Array.from(new Set(entries.flatMap((e) => e.tags))).sort();
 
   const initialSnapshotRef = useRef<string>("");
@@ -309,6 +314,14 @@ export function EntryEditor({
                     removeCustomCategory(name);
                     if (category === name) setCategory("Emotion");
                   }}
+                  onRename={(oldName, newName) => {
+                    const res = renameCustomCategory(oldName, newName);
+                    if (res.ok) {
+                      toast.success(`Renamed to "${newName.trim()}"`);
+                      if (category === oldName) setCategory(newName.trim());
+                    }
+                    return res;
+                  }}
                 />
               </div>
             </div>
@@ -439,6 +452,10 @@ interface CategoryPickerProps {
   custom: string[];
   onAdd: (name: string) => void;
   onDelete: (name: string) => void;
+  onRename: (
+    oldName: string,
+    newName: string,
+  ) => { ok: boolean; reason?: string };
 }
 
 function CategoryPicker({
@@ -448,9 +465,11 @@ function CategoryPicker({
   custom,
   onAdd,
   onDelete,
+  onRename,
 }: CategoryPickerProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const [renaming, setRenaming] = useState<string | null>(null);
 
   const all = [...builtin, ...custom];
   const trimmed = draft.trim();
@@ -485,17 +504,30 @@ function CategoryPicker({
         />
         <span className="flex-1 truncate">{name}</span>
         {deletable && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(name);
-            }}
-            className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-destructive/10 hover:text-destructive transition"
-            aria-label={`Delete category ${name}`}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRenaming(name);
+              }}
+              className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-accent-foreground/10 transition"
+              aria-label={`Rename category ${name}`}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(name);
+              }}
+              className="opacity-0 group-hover:opacity-100 rounded p-0.5 hover:bg-destructive/10 hover:text-destructive transition"
+              aria-label={`Delete category ${name}`}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </>
         )}
       </div>
     );
@@ -569,6 +601,12 @@ function CategoryPicker({
           </Button>
         </div>
       </PopoverContent>
+      <RenameCategoryDialog
+        open={!!renaming}
+        onOpenChange={(o) => !o && setRenaming(null)}
+        currentName={renaming}
+        onRename={onRename}
+      />
     </Popover>
   );
 }

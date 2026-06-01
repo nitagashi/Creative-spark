@@ -93,10 +93,45 @@ export function useCustomCategories() {
     writeCustomCategoriesRaw(readCustomCategories().filter((c) => c !== name));
   }, []);
 
+  const rename = useCallback(
+    (oldName: string, newName: string): { ok: boolean; reason?: string } => {
+      const next = newName.trim();
+      if (!next) return { ok: false, reason: "Name can't be empty" };
+      if (next === oldName) return { ok: true };
+      const current = readCustomCategories();
+      if (isBuiltinCategory(next))
+        return { ok: false, reason: `"${next}" is a built-in category` };
+      if (
+        current.some(
+          (c) => c.toLowerCase() === next.toLowerCase() && c !== oldName,
+        )
+      ) {
+        return { ok: false, reason: `"${next}" already exists` };
+      }
+
+      writeCustomCategoriesRaw(current.map((c) => (c === oldName ? next : c)));
+
+      const all = readAll();
+      let touched = false;
+      const now = Date.now();
+      const updated = all.map((e) => {
+        if (e.category === oldName) {
+          touched = true;
+          return { ...e, category: next, updatedAt: now };
+        }
+        return e;
+      });
+      if (touched) writeAll(updated);
+      return { ok: true };
+    },
+    [],
+  );
+
   return {
     customCategories: list,
     addCustomCategory: add,
     removeCustomCategory: remove,
+    renameCustomCategory: rename,
   };
 }
 
