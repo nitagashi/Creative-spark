@@ -6,47 +6,14 @@ on:
       - release_app
     tags:
       - "v*"
+  pull_request:
+    types: [closed]
+    branches:
+      - release_app
   workflow_dispatch:
 
 jobs:
-  # NEW: Auto-sync main → release_app (keeps branches in sync)
-  sync-branches:
-    runs-on: ubuntu-latest
-    if: github.ref_name == 'release_app' # Only run when pushing to release_app
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Sync release_app to main
-        run: |
-          # Fetch all branches
-          git fetch --all
-
-          # Checkout main
-          git checkout main
-
-          # Pull latest changes
-          git pull origin main || true
-
-          # Merge release_app into main (fast-forward if possible)
-          git merge release_app --no-ff -m "chore: sync from release_app [skip ci]" || true
-
-          # Push changes back to main
-          git push origin main
-
-          # Switch back to release_app
-          git checkout release_app
-
-  # Version bump job - waits for sync to complete
   version:
-    needs: sync-branches
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.changelog.outputs.version }}
@@ -59,7 +26,7 @@ jobs:
 
       - name: Conventional Changelog Action
         id: changelog
-        uses: TriPSs/conventional-changelog-action@v5
+        uses: TriPSs/conventional-changelog-action@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           version-file: "./src-tauri/tauri.conf.json"
@@ -68,12 +35,16 @@ jobs:
           skip-version-file: "false"
           skip-commit: "false"
           skip-tag: "false"
+          # Only bump version if there are conventional commits
+          skip-on-version-bump: "false"
+          git-pull-method: "--ff-only"
+          tag-prefix: "v"
 
       - name: Push version changes
         uses: ad-m/github-push-action@v0.8.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref_name }}
+          branch: release_app
           force: false
           tags: true
 
