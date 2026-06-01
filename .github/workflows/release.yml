@@ -9,8 +9,44 @@ on:
   workflow_dispatch:
 
 jobs:
-  # NEW: Version bump job - automatically updates version in tauri.conf.json
+  # NEW: Auto-sync main → release_app (keeps branches in sync)
+  sync-branches:
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'release_app' # Only run when pushing to release_app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync release_app to main
+        run: |
+          # Fetch all branches
+          git fetch --all
+
+          # Checkout main
+          git checkout main
+
+          # Pull latest changes
+          git pull origin main || true
+
+          # Merge release_app into main (fast-forward if possible)
+          git merge release_app --no-ff -m "chore: sync from release_app [skip ci]" || true
+
+          # Push changes back to main
+          git push origin main
+
+          # Switch back to release_app
+          git checkout release_app
+
+  # Version bump job - waits for sync to complete
   version:
+    needs: sync-branches
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.changelog.outputs.version }}
@@ -41,7 +77,7 @@ jobs:
           force: false
           tags: true
 
-  # Main build job - now waits for version bump to complete
+  # Main build job
   publish-tauri:
     needs: version
     permissions:
@@ -57,7 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Need full history for version detection
+          fetch-depth: 0
 
       # Setup Node.js
       - name: Setup Node
@@ -70,9 +106,9 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal # Faster installation
+          profile: minimal
 
-      # Rust cache for faster builds
+      # Rust cache
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
@@ -92,6 +128,6 @@ jobs:
           tagName: ${{ needs.version.outputs.tag }}
           releaseName: "v${{ needs.version.outputs.version }}"
           releaseBody: "See the assets to download this version."
-          releaseDraft: false # Changed to false for auto-publish
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
