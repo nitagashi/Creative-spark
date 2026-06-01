@@ -11,15 +11,11 @@ import { useEffect } from "react";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Get the UpdateDialog component from the hook
   const { checkForUpdates, UpdateDialog } = useAppUpdater();
-  // checkForUpdates();
 
   useEffect(() => {
-    // Check on app start
-    checkForUpdates(true); // silent mode, won't prompt if no update
+    checkForUpdates(true);
 
-    // Check every 6 hours
     const interval = setInterval(
       () => checkForUpdates(true),
       6 * 60 * 60 * 1000,
