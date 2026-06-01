@@ -9,7 +9,41 @@ on:
   workflow_dispatch:
 
 jobs:
+  # NEW: Version bump job - automatically updates version in tauri.conf.json
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.changelog.outputs.version }}
+      tag: ${{ steps.changelog.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Conventional Changelog Action
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version-file: "./src-tauri/tauri.conf.json"
+          version-path: "version"
+          output-file: "CHANGELOG.md"
+          skip-version-file: "false"
+          skip-commit: "false"
+          skip-tag: "false"
+
+      - name: Push version changes
+        uses: ad-m/github-push-action@v0.8.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
+          force: false
+          tags: true
+
+  # Main build job - now waits for version bump to complete
   publish-tauri:
+    needs: version
     permissions:
       contents: write
     strategy:
@@ -22,6 +56,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history for version detection
 
       # Setup Node.js
       - name: Setup Node
@@ -33,6 +69,8 @@ jobs:
       # Setup Rust
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          profile: minimal # Faster installation
 
       # Rust cache for faster builds
       - name: Rust cache
@@ -51,9 +89,63 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "App v__VERSION__"
+          tagName: ${{ needs.version.outputs.tag }}
+          releaseName: "v${{ needs.version.outputs.version }}"
           releaseBody: "See the assets to download this version."
-          releaseDraft: true
+          releaseDraft: false # Changed to false for auto-publish
           prerelease: false
           args: ${{ matrix.args }}
+
+  # NEW: Cleanup job - keeps only the latest 3 releases
+  cleanup-releases:
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    if: success() # Only run if build succeeded
+    steps:
+      - name: Delete old releases
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            // Filter out draft releases and sort by creation date (newest first)
+            const publishedReleases = releases
+              .filter(r => !r.draft)
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            // Keep only the latest 3
+            const toDelete = publishedReleases.slice(3);
+
+            if (toDelete.length === 0) {
+              console.log('No old releases to delete');
+              return;
+            }
+
+            console.log(`Deleting ${toDelete.length} old release(s)...`);
+
+            for (const release of toDelete) {
+              console.log(`  - Deleting: ${release.tag_name} (created: ${release.created_at})`);
+              
+              // Delete the release
+              await github.rest.repos.deleteRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id,
+              });
+              
+              // Delete the associated Git tag
+              try {
+                await github.rest.git.deleteRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `tags/${release.tag_name}`,
+                });
+              } catch (error) {
+                console.log(`    Could not delete tag ${release.tag_name}: ${error.message}`);
+              }
+            }
+
+            console.log('Cleanup complete!');
