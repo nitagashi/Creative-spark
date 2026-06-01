@@ -80,7 +80,7 @@ export function AppSidebar({ filter, onChange, counts }: Props) {
               Creative Spark
             </h1>
             <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
-              writing library
+              writing library manager
             </p>
           </div>
         </div>
