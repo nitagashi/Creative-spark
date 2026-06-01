@@ -10,8 +10,8 @@ import NotFound from "./pages/NotFound.tsx";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // This automatically checks for updates
-  useAppUpdater();
+  // Get the UpdateDialog component from the hook
+  const { UpdateDialog } = useAppUpdater();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -24,6 +24,7 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        <UpdateDialog />
       </TooltipProvider>
     </QueryClientProvider>
   );
