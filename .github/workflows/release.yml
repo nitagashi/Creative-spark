@@ -13,7 +13,42 @@ on:
   workflow_dispatch:
 
 jobs:
+  sync-branches:
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'release_app' # Only run when pushing to release_app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync release_app to main
+        run: |
+          # Fetch all branches
+          git fetch --all
+
+          # Checkout main
+          git checkout main
+
+          # Pull latest changes
+          git pull origin main || true
+
+          # Merge release_app into main (fast-forward if possible)
+          git merge release_app --no-ff -m "chore: sync from release_app [skip ci]" || true
+
+          # Push changes back to main
+          git push origin main
+
+          # Switch back to release_app
+          git checkout release_app
+
   version:
+    needs: sync-branches
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.changelog.outputs.version }}
@@ -44,7 +79,7 @@ jobs:
         uses: ad-m/github-push-action@v0.8.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: release_app
+          branch: ${{ github.ref_name }}
           force: false
           tags: true
 
