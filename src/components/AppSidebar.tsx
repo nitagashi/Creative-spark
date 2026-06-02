@@ -112,7 +112,7 @@ export function AppSidebar({ filter, onChange, counts }: Props) {
             </div>
             <div className="min-w-0 group-data-[collapsible=icon]:hidden">
               <h1 className="font-serif-display text-lg font-semibold leading-none">
-                Writer's Archive
+                Creative Spark
               </h1>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
                 writing library
@@ -175,16 +175,49 @@ export function AppSidebar({ filter, onChange, counts }: Props) {
                           }
                           tooltip={c}
                           className={cn(
-                            "h-9 pr-16",
+                            "h-9 ",
                             active &&
                               "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
                           )}
                         >
-                          <Tag className="h-4 w-4" />
-                          <span className="flex-1 truncate">{c}</span>
+                          <Tag className="h-4 w-4 " />
+                          <span className="flex-1 truncate ">{c}</span>
+                          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/cat:opacity-100 transition group-data-[collapsible=icon]:hidden">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRenaming(c);
+                              }}
+                              className="rounded p-1 hover:bg-accent hover:text-foreground"
+                              aria-label={`Rename category ${c}`}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (count > 0) {
+                                  toast.error(
+                                    `"${c}" is still used by ${count} ${
+                                      count === 1 ? "entry" : "entries"
+                                    }`,
+                                  );
+                                  return;
+                                }
+                                removeCustomCategory(c);
+                                if (active) onChange({ kind: "all" });
+                              }}
+                              className="rounded p-1 hover:bg-destructive/10 hover:text-destructive"
+                              aria-label={`Delete category ${c}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
                           <span
                             className={cn(
-                              "text-xs tabular-nums group-data-[collapsible=icon]:hidden",
+                              "text-xs tabular-nums group-data-[collapsible=icon]:hidden group-hover/cat:opacity-0",
                               active
                                 ? "text-primary"
                                 : "text-muted-foreground/60",
@@ -193,39 +226,6 @@ export function AppSidebar({ filter, onChange, counts }: Props) {
                             {count}
                           </span>
                         </SidebarMenuButton>
-                        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/cat:opacity-100 transition group-data-[collapsible=icon]:hidden">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRenaming(c);
-                            }}
-                            className="rounded p-1 hover:bg-accent hover:text-foreground"
-                            aria-label={`Rename category ${c}`}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (count > 0) {
-                                toast.error(
-                                  `"${c}" is still used by ${count} ${
-                                    count === 1 ? "entry" : "entries"
-                                  }`,
-                                );
-                                return;
-                              }
-                              removeCustomCategory(c);
-                              if (active) onChange({ kind: "all" });
-                            }}
-                            className="rounded p-1 hover:bg-destructive/10 hover:text-destructive"
-                            aria-label={`Delete category ${c}`}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
                       </SidebarMenuItem>
                     );
                   })}
