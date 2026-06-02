@@ -45,7 +45,7 @@
         "https://github.com/nitagashi/Creative-spark/releases/latest/download/latest.json"
       ],
       "windows": {
-        "installMode": "passive"
+        "installMode": "quiet"
       }
     }
   }
