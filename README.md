@@ -62,13 +62,13 @@ Examples:
 
 ---
 
-### ❤️ Favourite Entries
+### Favourite Entries
 
 Save your most-used references for quick access.
 
 ---
 
-### 📝 Rich Entry Editor
+### Rich Entry Editor
 
 Each entry can contain:
 
@@ -97,7 +97,7 @@ Focus on writing, not on managing clutter.
 
 ---
 
-## 📖 Example Entry
+## Example Entry
 
 ### Nervousness
 
